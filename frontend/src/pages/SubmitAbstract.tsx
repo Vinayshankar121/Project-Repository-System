@@ -9,9 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { allTechnologies } from '@/data/mockData';
 import { X, Check, Plus, FileText, RefreshCw } from 'lucide-react';
-import AIAnalysisButton from '@/components/AIAnalysisButton';
 
 interface AbstractSubmission {
     id: number;
@@ -22,9 +20,17 @@ interface AbstractSubmission {
     status: string;
     createdAt: string;
     abstractId?: number;
+    abstract_id?: number;
     remarks?: string;
     action?: string;
 }
+
+type StatusDetail = {
+    id?: number;
+    abstractId?: number;
+    action?: string;
+    remarks?: string;
+};
 
 const SubmitAbstract = () => {
     const { isAuthenticated, user } = useAuth();
@@ -34,25 +40,27 @@ const SubmitAbstract = () => {
     const [title, setTitle] = useState('');
     const [abstract, setAbstract] = useState('');
     const [selectedTech, setSelectedTech] = useState<string[]>([]);
-    const [techSearch, setTechSearch] = useState('');
+    const [techInput, setTechInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [previousSubmissions, setPreviousSubmissions] = useState<AbstractSubmission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const filteredTechnologies = allTechnologies.filter(
-        tech =>
-            tech.toLowerCase().includes(techSearch.toLowerCase()) &&
-            !selectedTech.includes(tech)
-    ).slice(0, 8);
+    const addTechnologies = () => {
+        const newTechs = techInput
+            .split(',')
+            .map(tech => tech.trim())
+            .filter(Boolean)
+            .filter(tech => !selectedTech.includes(tech));
+
+        if (newTechs.length > 0) {
+            setSelectedTech(prev => [...prev, ...newTechs]);
+        }
+        setTechInput('');
+    };
 
     const toggleTech = (tech: string) => {
-        if (selectedTech.includes(tech)) {
-            setSelectedTech(prev => prev.filter(t => t !== tech));
-        } else {
-            setSelectedTech(prev => [...prev, tech]);
-            setTechSearch('');
-        }
+        setSelectedTech(prev => prev.filter(t => t !== tech));
     };
 
     useEffect(() => {
@@ -71,24 +79,24 @@ const SubmitAbstract = () => {
             if (!response.ok) {
                 throw new Error('Failed to fetch submissions');
             }
-            const data = await response.json();
+            const data: AbstractSubmission[] = await response.json();
             const submissions = Array.isArray(data) ? data : [];
 
             console.log('Submissions from API:', submissions);
 
             // Fetch all status details in one call
-            let statusDataMap: Record<number, any> = {};
+            const statusDataMap: Record<number, StatusDetail> = {};
             try {
                 const statusResponse = await fetch(
                     `http://localhost:2109/abstract/status/${user.id}`
                 );
                 if (statusResponse.ok) {
-                    const statusData = await statusResponse.json();
+                    const statusData: StatusDetail | StatusDetail[] = await statusResponse.json();
                     console.log('Status data from API:', statusData);
                     
                     // Create a map of abstractId -> status details
                     if (Array.isArray(statusData)) {
-                        statusData.forEach((status: any) => {
+                        statusData.forEach((status) => {
                             const id = status.abstractId || status.id;
                             if (id !== null && id !== undefined) {
                                 statusDataMap[id] = status;
@@ -107,7 +115,7 @@ const SubmitAbstract = () => {
             console.log('Status map:', statusDataMap);
 
             // Enrich submissions with status details
-            const enrichedSubmissions = submissions.map((submission: any) => {
+            const enrichedSubmissions = submissions.map((submission) => {
                 // Try multiple field name variations to find the ID
                 const submissionId = submission.abstractId || submission.abstract_id || submission.id;
                 const statusDetail = statusDataMap[submissionId];
@@ -356,7 +364,6 @@ const SubmitAbstract = () => {
                                     <CardTitle className="text-2xl">Submit Final Year Project Abstract</CardTitle>
                                     <CardDescription>
                                         Submit your abstract to college management for review and approval.
-                                        Use AI analysis to check similarity before submitting.
                                     </CardDescription>
                                 </div>
                                 <Button variant="outline" onClick={() => setShowForm(false)}>
@@ -411,43 +418,23 @@ const SubmitAbstract = () => {
                                         </div>
                                     )}
 
-                                    <Input
-                                        placeholder="Search technologies..."
-                                        value={techSearch}
-                                        onChange={(e) => setTechSearch(e.target.value)}
-                                    />
-
-                                    {(techSearch || selectedTech.length === 0) && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {filteredTechnologies.map(tech => (
-                                                <Badge
-                                                    key={tech}
-                                                    variant="outline"
-                                                    className="cursor-pointer hover:bg-secondary"
-                                                    onClick={() => toggleTech(tech)}
-                                                >
-                                                    {tech}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="Add technologies separated by commas"
+                                            value={techInput}
+                                            onChange={(e) => setTechInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ',') {
+                                                    e.preventDefault();
+                                                    addTechnologies();
+                                                }
+                                            }}
+                                        />
+                                        <Button type="button" variant="outline" onClick={addTechnologies}>
+                                            Add
+                                        </Button>
+                                    </div>
                                 </div>
-
-                                {(title && abstract) && (
-                                    <Card className="bg-muted/50 border-dashed">
-                                        <CardContent className="pt-4">
-                                            <p className="text-sm text-muted-foreground mb-3">
-                                                🔍 Analyze your abstract before submission to check for similarity and get improvement suggestions.
-                                            </p>
-                                            <AIAnalysisButton
-                                                title={title}
-                                                abstract={abstract}
-                                                technologies={selectedTech}
-                                                department={user?.department}
-                                            />
-                                        </CardContent>
-                                    </Card>
-                                )}
 
                                 <div className="flex gap-3 pt-4">
                                     <Button type="submit" disabled={isSubmitting} className="flex-1">

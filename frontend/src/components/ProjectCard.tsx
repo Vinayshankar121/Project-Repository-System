@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Project } from '@/data/mockData';
+import type { Project } from '@/data/mockData';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import TechnologyBadge from './TechnologyBadge';

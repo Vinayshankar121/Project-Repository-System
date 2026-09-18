@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Project, mockProjects as initialProjects } from '@/data/mockData';
+import type { Project } from '@/data/mockData';
 
 interface ProjectContextType {
   projects: Project[];
@@ -15,7 +15,7 @@ interface ProjectContextType {
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   const addProject = (project: Omit<Project, 'id' | 'status' | 'submittedAt'>, status: 'pending' | 'approved' = 'pending') => {
     const newProject: Project = {

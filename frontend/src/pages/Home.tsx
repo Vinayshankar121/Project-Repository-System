@@ -1,14 +1,51 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, GraduationCap, BookOpen, Users, Sparkles } from 'lucide-react';
-import { mockProjects } from '@/data/mockData';
+import { Search, GraduationCap, BookOpen, Users } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+
+type ProjectApiResponse = {
+  id: number;
+  projectTitle?: string;
+  abstractText?: string;
+  technologies?: string | string[];
+};
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [approvedProjects, setApprovedProjects] = useState(0);
+  const [uniqueTechnologies, setUniqueTechnologies] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProjectStats = async () => {
+      try {
+        const response = await fetch('http://localhost:2109/project');
+        if (!response.ok) return;
+
+        const data: ProjectApiResponse[] = await response.json();
+        const technologies = new Set<string>();
+
+        data.forEach((project) => {
+          const techs = Array.isArray(project.technologies)
+            ? project.technologies
+            : typeof project.technologies === 'string'
+              ? project.technologies.split(',').map(t => t.trim()).filter(Boolean)
+              : [];
+
+          techs.forEach((tech) => technologies.add(tech));
+        });
+
+        setApprovedProjects(data.length);
+        setUniqueTechnologies(technologies.size);
+      } catch (error) {
+        console.error('Failed to load project stats:', error);
+      }
+    };
+
+    void fetchProjectStats();
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,9 +53,6 @@ const Home = () => {
       navigate(`/projects?search=${encodeURIComponent(searchQuery)}`);
     }
   };
-
-  const approvedProjects = mockProjects.filter(p => p.status === 'approved');
-  const uniqueTechnologies = new Set(mockProjects.flatMap(p => p.technologies));
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,8 +72,8 @@ const Home = () => {
           </h1>
           
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Explore existing senior projects, avoid duplicates, and get AI-powered suggestions 
-            to make your project unique and impactful.
+            Explore existing senior projects, compare ideas, and build on proven work to create
+            something original and impactful.
           </p>
 
           {/* Search Bar */}
@@ -90,13 +124,6 @@ const Home = () => {
               <p className="text-3xl font-bold">{uniqueTechnologies.size}+</p>
               <p className="text-sm text-muted-foreground">Technologies Covered</p>
             </div>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-3">
-                <Sparkles className="h-6 w-6 text-primary" />
-              </div>
-              <p className="text-3xl font-bold">AI</p>
-              <p className="text-sm text-muted-foreground">Powered Suggestions</p>
-            </div>
           </div>
         </div>
       </section>
@@ -114,9 +141,9 @@ const Home = () => {
           </div>
           <div className="text-center p-6">
             <div className="text-4xl font-bold text-primary mb-3">2</div>
-            <h3 className="font-semibold mb-2">Get AI Suggestions</h3>
+            <h3 className="font-semibold mb-2">Review Ideas</h3>
             <p className="text-sm text-muted-foreground">
-              View AI-powered improvement ideas to make similar projects unique
+              Compare similar work and identify ways to add original value to your concept
             </p>
           </div>
           <div className="text-center p-6">

@@ -4,10 +4,18 @@ import Navbar from '@/components/Navbar';
 import ProjectCard from '@/components/ProjectCard';
 import TechnologyBadge from '@/components/TechnologyBadge';
 import Loader from '@/components/Loader';
-import { Project } from '@/data/mockData'; // Import Project interface
+import type { Project } from '@/data/mockData';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Filter, X } from 'lucide-react';
+
+type ProjectApiResponse = {
+  id: number;
+  projectTitle?: string;
+  abstractText?: string;
+  technologies?: string | string[];
+  githubLink?: string;
+};
 
 const Projects = () => {
   // const { getApprovedProjects } = useProjects(); // Removed static context usage
@@ -27,21 +35,21 @@ const Projects = () => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data = await response.json();
+        const data: ProjectApiResponse[] = await response.json();
 
         // Map API data to Project interface
-        const mappedProjects: Project[] = data.map((p: any) => ({
+        const mappedProjects: Project[] = data.map((p) => ({
           id: String(p.id),
           title: p.projectTitle || "Untitled Project",
-          abstract: p.abstract || "Description not available",
+          abstract: p.abstractText || "Description not available",
           technologies: Array.isArray(p.technologies)
             ? p.technologies
             : typeof p.technologies === 'string'
               ? p.technologies.split(',').map((t: string) => t.trim())
               : [],
           status: 'approved', // Assuming all fetched/public projects are approved/ready to view
-          submittedBy: p.uploadedBy || "Unknown User",
-          submittedAt: p.date || new Date().toISOString(),
+          submittedBy: "Unknown User",
+          submittedAt: "Not available",
           type: 'abstract', // Default, adjust if API has this info
           githubLink: p.githubLink,
         }));
@@ -95,7 +103,10 @@ const Projects = () => {
     setSelectedTech([]);
   };
 
-  const popularTechnologies = ['React', 'Python', 'Node.js', 'MongoDB', 'TensorFlow', 'Firebase', 'Machine Learning'];
+  const popularTechnologies = useMemo(
+    () => Array.from(new Set(apiProjects.flatMap(project => project.technologies))).slice(0, 12),
+    [apiProjects]
+  );
 
   if (isLoading) {
     return (

@@ -9,9 +9,17 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { allTechnologies } from '@/data/mockData';
 import { X, Check, Loader2 } from 'lucide-react';
-import AIAnalysisButton from '@/components/AIAnalysisButton';
+
+type ProjectSubmission = {
+    id: number;
+    projectTitle?: string;
+    abstractText?: string;
+    technologies?: string | string[];
+    year?: number;
+    department?: string;
+    githubLink?: string;
+};
 
 const SubmitProject = () => {
     const { isAuthenticated, user } = useAuth();
@@ -22,9 +30,9 @@ const SubmitProject = () => {
     const [description, setDescription] = useState('');
     const [selectedTech, setSelectedTech] = useState<string[]>([]);
     const [githubLink, setGithubLink] = useState('');
-    const [techSearch, setTechSearch] = useState('');
+    const [techInput, setTechInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [projects, setProjects] = useState<any[]>([]);
+    const [projects, setProjects] = useState<ProjectSubmission[]>([]);
     const [isLoadingProjects, setIsLoadingProjects] = useState(false);
     const [showSubmitForm, setShowSubmitForm] = useState(false);
 
@@ -51,7 +59,7 @@ const SubmitProject = () => {
                 throw new Error(`Failed to fetch projects: ${response.status}`);
             }
 
-            const data = await response.json();
+            const data: ProjectSubmission[] | { data?: ProjectSubmission[] } = await response.json();
             setProjects(Array.isArray(data) ? data : data.data || []);
         } catch (error) {
             console.error("Error fetching projects:", error);
@@ -65,19 +73,21 @@ const SubmitProject = () => {
         }
     };
 
-    const filteredTechnologies = allTechnologies.filter(
-        tech =>
-            tech.toLowerCase().includes(techSearch.toLowerCase()) &&
-            !selectedTech.includes(tech)
-    ).slice(0, 8);
+    const addTechnologies = () => {
+        const newTechs = techInput
+            .split(',')
+            .map(tech => tech.trim())
+            .filter(Boolean)
+            .filter(tech => !selectedTech.includes(tech));
+
+        if (newTechs.length > 0) {
+            setSelectedTech(prev => [...prev, ...newTechs]);
+        }
+        setTechInput('');
+    };
 
     const toggleTech = (tech: string) => {
-        if (selectedTech.includes(tech)) {
-            setSelectedTech(prev => prev.filter(t => t !== tech));
-        } else {
-            setSelectedTech(prev => [...prev, tech]);
-            setTechSearch('');
-        }
+        setSelectedTech(prev => prev.filter(t => t !== tech));
     };
 
     const handleSubmit = async (e?: React.FormEvent) => {
@@ -230,26 +240,22 @@ const SubmitProject = () => {
                                         </div>
                                     )}
 
-                                    <Input
-                                        placeholder="Search technologies..."
-                                        value={techSearch}
-                                        onChange={(e) => setTechSearch(e.target.value)}
-                                    />
-
-                                    {(techSearch || selectedTech.length === 0) && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {filteredTechnologies.map(tech => (
-                                                <Badge
-                                                    key={tech}
-                                                    variant="outline"
-                                                    className="cursor-pointer hover:bg-secondary"
-                                                    onClick={() => toggleTech(tech)}
-                                                >
-                                                    {tech}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="Add technologies separated by commas"
+                                            value={techInput}
+                                            onChange={(e) => setTechInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ',') {
+                                                    e.preventDefault();
+                                                    addTechnologies();
+                                                }
+                                            }}
+                                        />
+                                        <Button type="button" variant="outline" onClick={addTechnologies}>
+                                            Add
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -262,22 +268,6 @@ const SubmitProject = () => {
                                         onChange={(e) => setGithubLink(e.target.value)}
                                     />
                                 </div>
-
-                                {(title && description) && (
-                                    <Card className="bg-muted/50 border-dashed">
-                                        <CardContent className="pt-4">
-                                            <p className="text-sm text-muted-foreground mb-3">
-                                                🔍 Analyze your description before submission.
-                                            </p>
-                                            <AIAnalysisButton
-                                                title={title}
-                                                abstract={description}
-                                                technologies={selectedTech}
-                                                department={user?.department}
-                                            />
-                                        </CardContent>
-                                    </Card>
-                                )}
 
                                 <div className="flex gap-3 pt-4">
                                     <Button type="submit" disabled={isSubmitting} className="flex-1">
